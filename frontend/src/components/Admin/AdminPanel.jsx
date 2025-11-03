@@ -145,6 +145,17 @@ const AdminPanel = observer(() => {
         <div className="admin-section">
           <h2>Uploaded FAQs ({adminStore.uploadedData.length})</h2>
           
+          {adminStore.uploadedData.length > 0 && adminStore.stats && (
+            <div className="stats-bar">
+              <span>📊 Total: {adminStore.stats.total}</span>
+              <span>✅ With Embeddings: {adminStore.stats.withEmbeddings}</span>
+              <span>🔍 Keyword Only: {adminStore.stats.keywordOnly}</span>
+              {adminStore.stats.totalContentLength > 0 && (
+                <span>📄 Total Content: {(adminStore.stats.totalContentLength / 1000).toFixed(1)}K chars</span>
+              )}
+            </div>
+          )}
+          
           {adminStore.isLoading ? (
             <div className="loading">Loading...</div>
           ) : adminStore.uploadedData.length === 0 ? (
@@ -167,6 +178,16 @@ const AdminPanel = observer(() => {
                   <div className="faq-meta">
                     <span>Type: {faq.fileType}</span>
                     {faq.fileName && <span> • File: {faq.fileName}</span>}
+                    {faq.contentLength && <span> • Size: {(faq.contentLength / 1000).toFixed(1)}K chars</span>}
+                    <span> • 
+                      {faq.embeddingStatus === 'generated' ? (
+                        <span style={{ color: '#4caf50' }}> ✅ Semantic Search Enabled</span>
+                      ) : faq.embeddingStatus === 'failed' || faq.embeddingStatus === 'error' ? (
+                        <span style={{ color: '#f44336' }}> ⚠️ Keyword Search Only</span>
+                      ) : (
+                        <span style={{ color: '#ff9800' }}> 🔍 Keyword Search Only</span>
+                      )}
+                    </span>
                     <span> • Created: {new Date(faq.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>

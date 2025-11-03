@@ -1,7 +1,11 @@
 .admin-panel {
-  min-height: 100vh;
-  background: #f9fafb;
+  min-height: calc(100vh - 64px);
+  background: #0a0a0a;
+  background-image: 
+    radial-gradient(circle at 20% 20%, rgba(0, 255, 0, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(0, 255, 0, 0.03) 0%, transparent 50%);
   padding: 2rem 1rem;
+  color: #ffffff;
 }
 
 .admin-container {
@@ -13,22 +17,23 @@
   margin: 0 0 2rem 0;
   font-size: 2rem;
   font-weight: 700;
-  color: #111827;
+  color: #ffffff;
 }
 
 .admin-section {
-  background: #ffffff;
-  border-radius: 0.5rem;
+  background: #1a1a1a;
+  border: 1px solid #2d2d2d;
+  border-radius: 0.75rem;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .admin-section h2 {
   margin: 0 0 1.5rem 0;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #111827;
+  color: #ffffff;
 }
 
 .faq-form {
@@ -46,16 +51,18 @@
 .form-group label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: #9ca3af;
 }
 
 .form-group input,
 .form-group textarea {
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1.5px solid #2d2d2d;
   border-radius: 0.5rem;
   font-size: 1rem;
   font-family: inherit;
+  background: #0f0f0f;
+  color: #ffffff;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -67,19 +74,22 @@
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #39ff14;
+  box-shadow: 0 0 0 3px rgba(57, 255, 20, 0.1);
+  background: #141414;
 }
 
 .form-group input:disabled,
 .form-group textarea:disabled {
-  background: #f3f4f6;
+  background: #141414;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .form-group input[type="file"] {
   padding: 0.5rem;
   cursor: pointer;
+  border-color: #39ff14;
 }
 
 .file-name {
@@ -92,13 +102,14 @@
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #2d2d2d;
+  padding-bottom: 1rem;
 }
 
 .upload-mode-toggle button {
   padding: 0.5rem 1rem;
   background: transparent;
-  color: #6b7280;
+  color: #9ca3af;
   border: none;
   border-bottom: 2px solid transparent;
   font-size: 0.875rem;
@@ -108,48 +119,59 @@
 }
 
 .upload-mode-toggle button:hover {
-  color: #3b82f6;
+  color: #39ff14;
 }
 
 .upload-mode-toggle button.active {
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
+  color: #39ff14;
+  border-bottom-color: #39ff14;
 }
 
 .error-message {
   padding: 0.75rem;
-  background: #fee2e2;
-  color: #991b1b;
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
   border-radius: 0.5rem;
   font-size: 0.875rem;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .submit-button {
   padding: 0.75rem 1rem;
-  background: #3b82f6;
-  color: #ffffff;
+  background: #39ff14;
+  color: #0a0a0a;
   border: none;
   border-radius: 0.5rem;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(57, 255, 20, 0.3);
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #2563eb;
+  background: #32ff00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(57, 255, 20, 0.4);
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .submit-button:disabled {
-  background: #9ca3af;
+  background: #2d2d2d;
+  color: #6b7280;
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 .loading,
 .empty-state {
   text-align: center;
   padding: 2rem;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .faq-list {
@@ -159,10 +181,16 @@
 }
 
 .faq-item {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  border: 1px solid #2d2d2d;
+  border-radius: 0.75rem;
   padding: 1rem;
-  background: #ffffff;
+  background: #0f0f0f;
+  transition: all 0.2s ease;
+}
+
+.faq-item:hover {
+  border-color: #39ff14;
+  box-shadow: 0 2px 8px rgba(57, 255, 20, 0.1);
 }
 
 .faq-header {
@@ -176,33 +204,38 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: #ffffff;
   flex: 1;
 }
 
 .delete-button {
   padding: 0.5rem 1rem;
-  background: #dc2626;
-  color: #ffffff;
-  border: none;
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 0.375rem;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .delete-button:hover:not(:disabled) {
-  background: #b91c1c;
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ffffff;
 }
 
 .delete-button:disabled {
-  background: #9ca3af;
+  background: #2d2d2d;
+  color: #6b7280;
   cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .faq-content {
   margin: 0.5rem 0;
-  color: #374151;
+  color: #9ca3af;
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -211,6 +244,28 @@
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: #6b7280;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stats-bar {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #0f0f0f;
+  border: 1px solid #2d2d2d;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+}
+
+.stats-bar span {
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 @media (max-width: 768px) {
@@ -226,6 +281,9 @@
   .delete-button {
     align-self: flex-end;
   }
+
+  .stats-bar {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 }
-
-

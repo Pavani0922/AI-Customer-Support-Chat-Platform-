@@ -3,6 +3,7 @@ import { adminAPI } from '../services/api.js';
 
 class AdminStore {
   uploadedData = [];
+  stats = null;
   isUploading = false;
   isLoading = false;
   error = null;
@@ -44,6 +45,7 @@ class AdminStore {
       if (response.success) {
         runInAction(() => {
           this.uploadedData = response.faqs;
+          this.stats = response.stats || null;
           this.isLoading = false;
         });
       }

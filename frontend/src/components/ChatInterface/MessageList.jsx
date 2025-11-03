@@ -10,9 +10,23 @@ const MessageList = observer(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Scroll on initial mount
+  useEffect(() => {
+    scrollToBottom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Scroll when messages change
   useEffect(() => {
     scrollToBottom();
   }, [chatStore.messages]);
+
+  // Also scroll when typing indicator toggles
+  useEffect(() => {
+    if (chatStore.isTyping) {
+      scrollToBottom();
+    }
+  }, [chatStore.isTyping]);
 
   const handleSuggestionClick = async (question) => {
     if (!chatStore.isLoading) {
@@ -23,8 +37,15 @@ const MessageList = observer(() => {
   if (chatStore.messages.length === 0) {
     return (
       <div className="empty-messages">
-        <div className="empty-icon">🤖</div>
-        <h3>Welcome to AI Support!</h3>
+        <div style={{ 
+          width: '8px', 
+          height: '8px', 
+          borderRadius: '50%', 
+          background: '#39ff14', 
+          marginBottom: '1rem',
+          boxShadow: '0 0 12px rgba(57, 255, 20, 0.5)'
+        }}></div>
+        <h3>How can I help you today?</h3>
         <p className="empty-subtitle">Ask me anything and I'll help you out</p>
         <div className="suggestions">
           <div 
@@ -71,10 +92,13 @@ const MessageList = observer(() => {
         <MessageBubble key={index} message={message} index={index} />
       ))}
       {chatStore.isTyping && (
-        <div className="typing-indicator">
-          <span></span>
-          <span></span>
-          <span></span>
+        <div className="typing-indicator-wrapper">
+          <div className="typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <span className="typing-text">Agent is typing...</span>
         </div>
       )}
       <div ref={messagesEndRef} />

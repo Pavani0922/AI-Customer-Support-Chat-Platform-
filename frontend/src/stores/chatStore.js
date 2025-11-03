@@ -13,7 +13,26 @@ class ChatStore {
   constructor() {
     makeAutoObservable(this);
     this.currentSessionId = this.generateSessionId();
+    this.restoreConversation();
   }
+
+  // Restore conversation from localStorage
+  restoreConversation = () => {
+    try {
+      const savedConversationId = localStorage.getItem('currentConversationId');
+      const savedSessionId = localStorage.getItem('currentSessionId');
+      
+      if (savedConversationId) {
+        this.currentConversationId = savedConversationId;
+      }
+      
+      if (savedSessionId) {
+        this.currentSessionId = savedSessionId;
+      }
+    } catch (error) {
+      console.error('Error restoring conversation:', error);
+    }
+  };
 
   generateSessionId = () => {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -55,6 +74,14 @@ class ChatStore {
           this.currentSessionId = response.sessionId;
           this.isLoading = false;
           this.isTyping = false;
+          
+          // Persist conversation ID and session ID
+          try {
+            localStorage.setItem('currentConversationId', response.conversationId);
+            localStorage.setItem('currentSessionId', response.sessionId);
+          } catch (error) {
+            console.error('Error saving conversation to localStorage:', error);
+          }
         });
       }
     } catch (error) {
@@ -85,6 +112,14 @@ class ChatStore {
           this.currentConversationId = conversationId;
           this.currentSessionId = response.conversation.sessionId;
           this.isLoading = false;
+          
+          // Persist conversation ID and session ID
+          try {
+            localStorage.setItem('currentConversationId', conversationId);
+            localStorage.setItem('currentSessionId', response.conversation.sessionId);
+          } catch (error) {
+            console.error('Error saving conversation to localStorage:', error);
+          }
         });
       }
     } catch (error) {
@@ -121,6 +156,14 @@ class ChatStore {
     this.currentConversationId = null;
     this.currentSessionId = this.generateSessionId();
     this.error = null;
+    
+    // Clear from localStorage
+    try {
+      localStorage.removeItem('currentConversationId');
+      localStorage.removeItem('currentSessionId');
+    } catch (error) {
+      console.error('Error clearing conversation from localStorage:', error);
+    }
   };
 
   setTyping = (isTyping) => {

@@ -40,14 +40,20 @@ class FAQService {
         return null; // Fallback to keyword search
       }
 
-      // Get all FAQs with embeddings
-      const faqs = await FAQ.find({ embedding: { $exists: true, $ne: null } })
-        .select('title content embedding keywords createdAt')
+      // Get all FAQs with embeddings (only those with successfully generated embeddings)
+      const faqs = await FAQ.find({ 
+        embedding: { $exists: true, $ne: null },
+        embeddingStatus: 'generated'
+      })
+        .select('title content embedding keywords createdAt contentLength')
         .lean();
 
       if (faqs.length === 0) {
+        console.log('📚 No FAQs with embeddings found, falling back to keyword search');
         return null; // No embeddings available
       }
+
+      console.log(`🔍 Searching ${faqs.length} FAQs with embeddings for: "${query.substring(0, 50)}..."`);
 
       // Calculate cosine similarity for each FAQ
       const results = faqs
@@ -55,9 +61,15 @@ class FAQService {
           const similarity = this.cosineSimilarity(queryEmbedding, faq.embedding);
           return { ...faq, score: similarity };
         })
-        .filter(item => item.score > 0.5) // Threshold for relevance
+        .filter(item => item.score >= 0.7) // Stricter threshold for relevance (0.7 = 70% similarity)
         .sort((a, b) => b.score - a.score)
         .slice(0, limit);
+
+      if (results.length > 0) {
+        console.log(`✅ Found ${results.length} relevant FAQs via semantic search (best match: ${results[0].score.toFixed(3)})`);
+      } else {
+        console.log(`⚠️  No FAQs met similarity threshold (0.7), falling back to keyword search`);
+      }
 
       return results;
     } catch (error) {
@@ -143,12 +155,11 @@ class FAQService {
       return '';
     }
 
+    // Format FAQs in a clear, concise way for company-specific context
     return faqs.map((faq, index) => {
-      return `FAQ ${index + 1}:
-Title: ${faq.title}
-Content: ${faq.content.substring(0, 500)}${faq.content.length > 500 ? '...' : ''}
-`;
-    }).join('\n---\n\n');
+      const content = faq.content.substring(0, 600);
+      return `${index + 1}. ${faq.title}\n   ${content}${faq.content.length > 600 ? '...' : ''}`;
+    }).join('\n\n');
   }
 
   /**

@@ -1,6 +1,7 @@
 import Conversation from '../models/Conversation.js';
 import openAIService from './openAIService.js';
 import faqService from './faqService.js';
+import webSearchService from './webSearchService.js';
 
 class ChatService {
   /**
@@ -33,10 +34,48 @@ class ChatService {
       const relevantFAQs = await faqService.searchFAQs(userMessage, 3);
       const faqContext = faqService.formatFAQsForContext(relevantFAQs);
 
-      // 4. Build system prompt with context
-      const systemPrompt = openAIService.buildSystemPrompt(faqContext);
+      // Log FAQ usage for debugging
+      if (relevantFAQs && relevantFAQs.length > 0) {
+        console.log(`📚 Found ${relevantFAQs.length} relevant FAQ(s) for query: "${userMessage.substring(0, 50)}..."`);
+        relevantFAQs.forEach((faq, idx) => {
+          console.log(`   ${idx + 1}. ${faq.title} (score: ${faq.score?.toFixed(3) || 'N/A'})`);
+        });
+      } else {
+        console.log(`📚 No relevant FAQs found for query: "${userMessage.substring(0, 50)}..."`);
+      }
 
-      // 5. Prepare messages for OpenAI (last 10 messages for context)
+      // 4. Search the web for additional information if needed
+      let webResults = [];
+      let webContext = '';
+      
+      if (webSearchService.shouldUseWebSearch(userMessage, relevantFAQs)) {
+        console.log(`🌐 Performing web search for: "${userMessage.substring(0, 50)}..."`);
+        try {
+          webResults = await webSearchService.searchWeb(userMessage, 3);
+          if (webResults && webResults.length > 0) {
+            webContext = webSearchService.formatWebResultsForContext(webResults);
+            console.log(`✅ Found ${webResults.length} web result(s)`);
+          } else {
+            console.log(`⚠️ No web results found`);
+          }
+        } catch (error) {
+          console.error('Web search error:', error);
+          // Continue without web results if search fails
+        }
+      } else {
+        console.log(`ℹ️ Skipping web search (sufficient FAQ results found)`);
+      }
+
+      // 5. Generate conversation summary for better context awareness
+      // Get messages before the current one for summary
+      const previousMessages = conversation.messages.slice(0, -1);
+      const conversationSummary = openAIService.generateConversationSummary(previousMessages);
+
+      // 6. Build enhanced system prompt with FAQ context, web context, and conversation summary
+      const systemPrompt = openAIService.buildSystemPrompt(faqContext, conversationSummary, webContext);
+
+      // 7. Prepare messages for OpenAI (last 10 messages for context)
+      // This maintains conversational flow and context
       const recentMessages = conversation.messages
         .slice(-10)
         .map(msg => ({
@@ -44,25 +83,32 @@ class ChatService {
           content: msg.content
         }));
 
-      // 6. Generate AI response
+      // 8. Generate AI response with refined, company-specific responses
       const aiResponse = await openAIService.generateResponse(
         recentMessages,
-        systemPrompt
+        systemPrompt,
+        {
+          temperature: 0.7,      // Balanced creativity for natural, brand-aligned responses
+          max_tokens: 400,       // Concise, refined responses (2-5 sentences as per guidelines)
+          top_p: 0.9,           // Nucleus sampling for better quality
+          frequency_penalty: 0.3, // Reduce repetition for natural flow
+          presence_penalty: 0.3   // Encourage natural, company-specific conversation
+        }
       );
 
-      // 7. Add AI response to conversation
+      // 9. Add AI response to conversation
       conversation.messages.push({
         role: 'assistant',
         content: aiResponse,
         timestamp: new Date()
       });
 
-      // 8. Update conversation title if it's the first message
+      // 10. Update conversation title if it's the first message
       if (conversation.messages.length === 2) {
         conversation.title = userMessage.substring(0, 50) + (userMessage.length > 50 ? '...' : '');
       }
 
-      // 9. Save conversation
+      // 11. Save conversation
       await conversation.save();
 
       return {

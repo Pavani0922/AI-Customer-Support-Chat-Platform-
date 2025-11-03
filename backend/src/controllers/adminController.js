@@ -44,13 +44,49 @@ export const uploadFAQ = async (req, res, next) => {
       return res.status(400).json({ message: 'Title and content are required' });
     }
 
-    // Extract keywords
+    // Log document size for processing
+    const contentLength = content.length;
+    console.log(`📄 Processing ${fileType} document: "${title}" (${contentLength} characters)`);
+
+    // Extract keywords from title and content
     const keywords = faqService.extractKeywords(`${title} ${content}`);
+    console.log(`🔑 Extracted ${keywords.length} keywords`);
 
-    // Generate embedding for semantic search
-    const embedding = await openAIService.generateEmbedding(`${title} ${content}`);
+    // For large documents, prepare content for embedding generation
+    // If content is very large, we'll use a summary approach for embedding
+    let embedding = null;
+    let embeddingStatus = 'not_generated';
 
-    // Create FAQ
+    try {
+      // Generate embedding for semantic search
+      // For very large content (>8000 chars), create a summary for embedding
+      let embeddingText = `${title} ${content}`;
+      
+      if (contentLength > 8000) {
+        // For large documents, use title + first 2000 chars + last 2000 chars for embedding
+        // This captures the main topic and key information
+        const firstPart = content.substring(0, 2000);
+        const lastPart = content.substring(content.length - 2000);
+        embeddingText = `${title}\n\n${firstPart}\n\n... [middle content] ...\n\n${lastPart}`;
+        console.log(`📝 Large document detected. Creating optimized embedding from title + key sections`);
+      }
+
+      embedding = await openAIService.generateEmbedding(embeddingText);
+      
+      if (embedding) {
+        embeddingStatus = 'generated';
+        console.log(`✅ Embedding generated successfully (${embedding.length} dimensions)`);
+      } else {
+        embeddingStatus = 'failed';
+        console.log(`⚠️  Embedding generation failed or not configured, will use keyword search`);
+      }
+    } catch (error) {
+      console.error('❌ Embedding generation error:', error.message);
+      embeddingStatus = 'error';
+      // Continue without embedding - keyword search will be used as fallback
+    }
+
+    // Create FAQ with all metadata
     const faq = new FAQ({
       title,
       content,
@@ -58,19 +94,27 @@ export const uploadFAQ = async (req, res, next) => {
       keywords,
       fileType,
       fileName,
-      embedding
+      embedding,
+      embeddingStatus,
+      contentLength
     });
 
     await faq.save();
 
+    console.log(`✅ FAQ saved successfully: "${title}" (ID: ${faq._id})`);
+
     res.status(201).json({
       success: true,
+      message: `FAQ "${title}" uploaded successfully${embedding ? ' with embeddings' : ' (keyword search only)'}`,
       faq: {
         id: faq._id,
         title: faq.title,
-        content: faq.content,
+        content: faq.content.substring(0, 200) + (faq.content.length > 200 ? '...' : ''),
         fileType: faq.fileType,
         fileName: faq.fileName,
+        contentLength: faq.contentLength,
+        embeddingStatus: faq.embeddingStatus,
+        keywordsCount: faq.keywords?.length || 0,
         createdAt: faq.createdAt
       }
     });
@@ -83,12 +127,21 @@ export const getFAQs = async (req, res, next) => {
   try {
     const faqs = await FAQ.find()
       .sort({ createdAt: -1 })
-      .select('title content fileType fileName createdAt')
+      .select('title content fileType fileName contentLength embeddingStatus keywords createdAt')
       .lean();
+
+    // Add summary stats
+    const stats = {
+      total: faqs.length,
+      withEmbeddings: faqs.filter(f => f.embeddingStatus === 'generated').length,
+      keywordOnly: faqs.filter(f => f.embeddingStatus !== 'generated').length,
+      totalContentLength: faqs.reduce((sum, f) => sum + (f.contentLength || 0), 0)
+    };
 
     res.json({
       success: true,
-      faqs
+      faqs,
+      stats
     });
   } catch (error) {
     next(error);

@@ -31,6 +31,15 @@ const faqSchema = new mongoose.Schema({
   embedding: {
     type: [Number],
     sparse: true
+  },
+  embeddingStatus: {
+    type: String,
+    enum: ['generated', 'not_generated', 'failed', 'error'],
+    default: 'not_generated'
+  },
+  contentLength: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true
