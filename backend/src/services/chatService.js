@@ -30,8 +30,8 @@ class ChatService {
         timestamp: new Date()
       });
 
-      // 3. Search for relevant FAQs
-      const relevantFAQs = await faqService.searchFAQs(userMessage, 3);
+      // 3. Search for relevant FAQs - increased limit for more comprehensive context
+      const relevantFAQs = await faqService.searchFAQs(userMessage, 5);
       const faqContext = faqService.formatFAQsForContext(relevantFAQs);
 
       // Log FAQ usage for debugging
@@ -89,7 +89,7 @@ class ChatService {
         systemPrompt,
         {
           temperature: 0.7,      // Balanced creativity for natural, brand-aligned responses
-          max_tokens: 400,       // Concise, refined responses (2-5 sentences as per guidelines)
+          max_tokens: 600,      // Increased for detailed answers using FAQ specifics (3-6 sentences)
           top_p: 0.9,           // Nucleus sampling for better quality
           frequency_penalty: 0.3, // Reduce repetition for natural flow
           presence_penalty: 0.3   // Encourage natural, company-specific conversation

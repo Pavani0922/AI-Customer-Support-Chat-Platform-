@@ -194,25 +194,33 @@ You must always act as the official virtual assistant of ${companyName} and resp
       contextSection += `\nConversation history summary:\n${conversationSummary}\n`;
     }
 
-    // Guidelines section
+    // Guidelines section with emphasis on detailed FAQ usage
     const guidelines = `
 Guidelines:
 
-1. Always base your answers primarily on the FAQ and company data provided above.
+1. ALWAYS base your answers on the EXACT details provided in the FAQ and company data above. Use specific information, numbers, steps, and details from the FAQ content.
 
-2. If the answer is not explicitly found in the FAQ, respond naturally using your general knowledge — but keep your tone and content relevant to ${companyName}'s products or services.
+2. Provide DETAILED answers using ALL relevant information from the FAQ context. Include specific details like:
+   - Exact numbers, dates, timeframes mentioned in FAQs
+   - Step-by-step processes if described
+   - Specific policies, terms, or conditions
+   - Product names, features, or specifications mentioned
 
-3. Never say "check the website" or "I suggest" — instead, explain or guide directly.
+3. If the answer is not found in the FAQ, respond naturally using your general knowledge — but keep your tone and content relevant to ${companyName}'s products or services.
 
-4. If a question cannot be answered confidently, politely say: "I'm not sure about that specific detail — would you like me to connect you with our human support team?"
+4. Never say "check the website" or "I suggest" — instead, explain or guide directly using the FAQ details.
 
-5. Always personalize responses to sound like a real agent of ${companyName}.
+5. If a question cannot be answered confidently, politely say: "I'm not sure about that specific detail — would you like me to connect you with our human support team?"
 
-6. Keep responses short, clear, and user-friendly (2–5 sentences).
+6. Always personalize responses to sound like a real agent of ${companyName}.
 
-7. When web information is provided, use it to enhance your answer while keeping the FAQ as the primary source.
+7. Keep responses comprehensive but user-friendly (3–6 sentences for detailed answers). Include specific details from FAQs.
 
-8. Make responses feel tailored and specific to ${companyName}'s brand, products, and services.`;
+8. When web information is provided, use it to enhance your answer while keeping the FAQ as the PRIMARY source with ALL its details.
+
+9. Make responses feel tailored and specific to ${companyName}'s brand, products, and services.
+
+10. IMPORTANT: Read the FAQ content thoroughly and extract ALL relevant details to provide complete, detailed answers. Don't summarize too much - include specific information.`;
 
     // Complete system prompt
     const fullPrompt = `${basePrompt}
@@ -234,14 +242,47 @@ ${contextSection}${guidelines}`;
         return null;
       }
 
+      // Validate input text
+      if (!text || typeof text !== 'string' || text.trim().length === 0) {
+        console.warn('Invalid text for embedding generation');
+        return null;
+      }
+
+      // Truncate very long text to avoid API limits (most models have token limits)
+      const maxLength = 8000; // Safe limit for most embedding models
+      const textToEmbed = text.length > maxLength 
+        ? text.substring(0, maxLength) + '...'
+        : text;
+
       const response = await this.embeddingsClient.embeddings.create({
         model: this.embeddingsModel,
-        input: text
+        input: textToEmbed
       });
 
-      return response.data[0].embedding;
+      // Validate embedding response
+      if (!response || !response.data || !response.data[0] || !response.data[0].embedding) {
+        console.error('Invalid embedding response structure');
+        return null;
+      }
+
+      const embedding = response.data[0].embedding;
+
+      // Validate embedding is an array with proper dimensions
+      if (!Array.isArray(embedding) || embedding.length === 0) {
+        console.error('Embedding is not a valid array');
+        return null;
+      }
+
+      // Log embedding info for debugging
+      console.log(`✅ Embedding generated: ${embedding.length} dimensions`);
+      
+      return embedding;
     } catch (error) {
-      console.error('Embedding generation error:', error);
+      console.error('Embedding generation error:', error.message || error);
+      // Log more details for debugging
+      if (error.response) {
+        console.error('API Error Details:', error.response.status, error.response.data);
+      }
       return null;
     }
   }

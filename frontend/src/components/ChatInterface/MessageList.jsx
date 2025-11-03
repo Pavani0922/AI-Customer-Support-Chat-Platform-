@@ -7,7 +7,20 @@ const MessageList = observer(() => {
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Use both methods for better compatibility
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'end',
+        inline: 'nearest' 
+      });
+      
+      // Fallback: direct scroll on parent element
+      const messageListElement = messagesEndRef.current.closest('.message-list');
+      if (messageListElement) {
+        messageListElement.scrollTop = messageListElement.scrollHeight;
+      }
+    }
   };
 
   // Scroll on initial mount
@@ -18,13 +31,27 @@ const MessageList = observer(() => {
 
   // Scroll when messages change
   useEffect(() => {
-    scrollToBottom();
+    // Use setTimeout to ensure DOM has updated
+    const timer = setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    return () => clearTimeout(timer);
   }, [chatStore.messages]);
 
-  // Also scroll when typing indicator toggles
+  // Also scroll when typing indicator changes (both when it starts and when it stops)
   useEffect(() => {
+    // Scroll when typing starts
     if (chatStore.isTyping) {
-      scrollToBottom();
+      const timer = setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      // Scroll when typing stops (response received) - this is critical
+      const timer = setTimeout(() => {
+        scrollToBottom();
+      }, 200); // Slightly longer delay to ensure message is fully rendered
+      return () => clearTimeout(timer);
     }
   }, [chatStore.isTyping]);
 

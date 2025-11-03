@@ -37,12 +37,21 @@ class FAQService {
       const queryEmbedding = await openAIService.generateEmbedding(query);
       
       if (!queryEmbedding) {
+        console.log('⚠️  Query embedding generation failed, falling back to keyword search');
         return null; // Fallback to keyword search
       }
 
+      // Validate query embedding
+      if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
+        console.log('⚠️  Invalid query embedding structure, falling back to keyword search');
+        return null;
+      }
+
+      console.log(`✅ Query embedding generated: ${queryEmbedding.length} dimensions`);
+
       // Get all FAQs with embeddings (only those with successfully generated embeddings)
       const faqs = await FAQ.find({ 
-        embedding: { $exists: true, $ne: null },
+        embedding: { $exists: true, $ne: null, $ne: [] },
         embeddingStatus: 'generated'
       })
         .select('title content embedding keywords createdAt contentLength')
@@ -53,25 +62,56 @@ class FAQService {
         return null; // No embeddings available
       }
 
-      console.log(`🔍 Searching ${faqs.length} FAQs with embeddings for: "${query.substring(0, 50)}..."`);
+      // Filter out FAQs with invalid embeddings
+      const validFaqs = faqs.filter(faq => {
+        const isValid = Array.isArray(faq.embedding) && 
+                       faq.embedding.length > 0 && 
+                       faq.embedding.length === queryEmbedding.length;
+        if (!isValid) {
+          console.warn(`⚠️  FAQ "${faq.title}" has invalid embedding (length: ${faq.embedding?.length || 0})`);
+        }
+        return isValid;
+      });
 
-      // Calculate cosine similarity for each FAQ
-      const results = faqs
-        .map(faq => {
-          const similarity = this.cosineSimilarity(queryEmbedding, faq.embedding);
-          return { ...faq, score: similarity };
-        })
-        .filter(item => item.score >= 0.7) // Stricter threshold for relevance (0.7 = 70% similarity)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, limit);
-
-      if (results.length > 0) {
-        console.log(`✅ Found ${results.length} relevant FAQs via semantic search (best match: ${results[0].score.toFixed(3)})`);
-      } else {
-        console.log(`⚠️  No FAQs met similarity threshold (0.7), falling back to keyword search`);
+      if (validFaqs.length === 0) {
+        console.log('⚠️  No FAQs with valid embeddings found, falling back to keyword search');
+        return null;
       }
 
-      return results;
+      console.log(`🔍 Searching ${validFaqs.length} FAQs with valid embeddings for: "${query.substring(0, 50)}..."`);
+
+      // Calculate cosine similarity for each FAQ
+      const results = validFaqs
+        .map(faq => {
+          const similarity = this.cosineSimilarity(queryEmbedding, faq.embedding);
+          // Validate similarity score
+          if (isNaN(similarity) || similarity < 0 || similarity > 1) {
+            console.warn(`⚠️  Invalid similarity score for FAQ "${faq.title}": ${similarity}`);
+            return null;
+          }
+          return { ...faq, score: similarity };
+        })
+        .filter(item => item !== null) // Remove invalid results
+        .filter(item => item.score >= 0.5) // Lower threshold to catch more relevant FAQs (0.5 = 50% similarity)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit * 2); // Get more candidates, then filter by quality
+
+      // Filter by quality - keep top matches with good scores
+      const qualityResults = results
+        .filter(item => item.score >= 0.6) // Quality filter - at least 60% similarity for top results
+        .slice(0, limit);
+
+      if (qualityResults.length > 0) {
+        console.log(`✅ Found ${qualityResults.length} relevant FAQs via semantic search (best match: ${qualityResults[0].score.toFixed(3)})`);
+        return qualityResults;
+      } else if (results.length > 0) {
+        // If no high-quality matches, return the best available (even if below 0.6)
+        console.log(`⚠️  Found ${results.length} FAQ(s) with lower similarity (best: ${results[0].score.toFixed(3)}), using them`);
+        return results.slice(0, limit);
+      } else {
+        console.log(`⚠️  No FAQs met similarity threshold (0.5), falling back to keyword search`);
+        return null;
+      }
     } catch (error) {
       console.error('Semantic Search Error:', error);
       return null;
@@ -155,11 +195,12 @@ class FAQService {
       return '';
     }
 
-    // Format FAQs in a clear, concise way for company-specific context
+    // Format FAQs with FULL content for detailed answers - no truncation
+    // Include all relevant details so chatbot can provide comprehensive responses
     return faqs.map((faq, index) => {
-      const content = faq.content.substring(0, 600);
-      return `${index + 1}. ${faq.title}\n   ${content}${faq.content.length > 600 ? '...' : ''}`;
-    }).join('\n\n');
+      const score = faq.score ? ` (Relevance: ${(faq.score * 100).toFixed(1)}%)` : '';
+      return `${index + 1}. ${faq.title}${score}\n\n${faq.content}\n`;
+    }).join('\n---\n\n');
   }
 
   /**
